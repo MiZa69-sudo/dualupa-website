@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет — DUA LUPA</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <header class="navbar">
+        <a href="/" class="logo">
+            <span class="logo-dot"></span>
+            DUA LUPA
+        </a>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="#" id="logout-btn">Выйти</a>
+        </nav>
+    </header>
+
+    <main class="dashboard-page">
+        <div class="dashboard-glow"></div>
+
+        <div class="dashboard-container">
+
+            <!-- Карточка профиля -->
+            <div class="profile-card">
+                <div class="profile-avatar" id="avatar">?</div>
+                <div class="profile-info">
+                    <h2 id="profile-nick">Загрузка...</h2>
+                    <p id="profile-email" class="profile-email">—</p>
+                    <span class="profile-rank" id="profile-rank">Игрок</span>
+                </div>
+            </div>
+
+            <!-- Статистика -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Баланс</div>
+                    <div class="stat-value" id="stat-balance">0 ₽</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Рефералы</div>
+                    <div class="stat-value" id="stat-referrals">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Статус</div>
+                    <div class="stat-value accent" id="stat-status">Онлайн</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">С нами с</div>
+                    <div class="stat-value" id="stat-since">—</div>
+                </div>
+            </div>
+
+            <!-- Действия -->
+            <div class="dashboard-actions">
+                <a href="#" class="btn primary btn-full">СКАЧАТЬ ЛАУНЧЕР</a>
+                <a href="#referrals" class="btn secondary btn-full">ПРИГЛАСИТЬ ДРУГА</a>
+            </div>
+
+            <!-- Реферальная ссылка -->
+            <div class="referral-block" id="referrals">
+                <h3>🎁 Пригласи друга — получи бонус</h3>
+                <p>Отправь эту ссылку друзьям. За каждого, кто зарегистрируется, ты получишь награду.</p>
+                <div class="referral-input">
+                    <input type="text" id="ref-link" readonly value="Загрузка...">
+                    <button class="btn primary" id="copy-ref">КОПИРОВАТЬ</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="/particles.js"></script>
+    <script>
+        // Загружаем информацию о пользователе
+        async function loadUser() {
+            try {
+                const res = await fetch('/api/me');
+                if (!res.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const user = await res.json();
+
+                // Заполняем профиль
+                document.getElementById('profile-nick').textContent = user.nickname;
+                document.getElementById('profile-email').textContent = user.email;
+                document.getElementById('profile-rank').textContent = user.rank;
+                document.getElementById('avatar').textContent = user.nickname.charAt(0).toUpperCase();
+
+                // Статистика
+                document.getElementById('stat-balance').textContent = user.balance + ' ₽';
+                document.getElementById('stat-referrals').textContent = user.referrals;
+
+                const date = new Date(user.createdAt);
+                document.getElementById('stat-since').textContent =
+                    date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                // Реферальная ссылка
+                const refLink = `${window.location.origin}/register?ref=${user.nickname}`;
+                document.getElementById('ref-link').value = refLink;
+            } catch (e) {
+                console.error(e);
+                window.location.href = '/login';
+            }
+        }
+
+        // Копирование реф-ссылки
+        document.getElementById('copy-ref').addEventListener('click', () => {
+            const input = document.getElementById('ref-link');
+            input.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('copy-ref');
+            const original = btn.textContent;
+            btn.textContent = '✅ СКОПИРОВАНО';
+            setTimeout(() => btn.textContent = original, 1500);
+        });
+
+        // Логаут
+        document.getElementById('logout-btn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/';
+        });
+
+        loadUser();
+    </script>
+</body>
+</html>
