@@ -1,44 +1,19 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Главная страница
-app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="ru">
-    <head>
-      <meta charset="UTF-8">
-      <title>DUA LUPA</title>
-      <style>
-        body {
-          background: #08080d;
-          color: #B57EEC;
-          font-family: 'Segoe UI', sans-serif;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100vh;
-          margin: 0;
-          text-align: center;
-        }
-        h1 { font-size: 60px; letter-spacing: 8px; }
-        p { color: #888; }
-      </style>
-    </head>
-    <body>
-      <div>
-        <h1>DUA LUPA</h1>
-        <p>Сайт в разработке. Скоро здесь будет круто.</p>
-      </div>
-    </body>
-    </html>
-  `);
+// Отдаём статические файлы из папки public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API-проверка здоровья
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', project: 'DUA LUPA', time: new Date() });
 });
 
-// Проверка здоровья (для Render)
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', project: 'DUA LUPA' });
+// Все остальные маршруты → index.html (для SPA-роутинга)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
