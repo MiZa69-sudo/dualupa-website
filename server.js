@@ -1,32 +1,49 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Секрет для JWT (в продакшене хранить в переменных окружения!)
+// JWT-секрет (в продакшене — в env-переменных)
 const JWT_SECRET = process.env.JWT_SECRET || 'dua-lupa-super-secret-key-change-me';
 
-// Путь к "базе данных" (простой JSON-файл)
-const DB_PATH = path.join(__dirname, 'users.json');
+// Подключение к PostgreSQL
+const pool = new Pool({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT) || 5432,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    ssl: false, // наш VPS без SSL
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
+});
 
-// ===== ХЕЛПЕРЫ ДЛЯ РАБОТЫ С БАЗОЙ =====
-function readUsers() {
+// Создание таблиц при первом запуске
+async function initDatabase() {
     try {
-        if (!fs.existsSync(DB_PATH)) return [];
-        const data = fs.readFileSync(DB_PATH, 'utf8');
-        return JSON.parse(data);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR(50) PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                nickname VARCHAR(32) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                balance INTEGER DEFAULT 0,
+                rank VARCHAR(50) DEFAULT 'Игрок',
+                referrals INTEGER DEFAULT 0,
+                referred_by VARCHAR(32)
+            );
+        `);
+        console.log('✅ Database initialized');
     } catch (e) {
-        return [];
+        console.error('❌ Database init error:', e.message);
     }
-}
-
-function writeUsers(users) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2));
 }
 
 // ===== MIDDLEWARE =====
@@ -35,7 +52,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Проверка авторизации по JWT из cookie
+// Проверка JWT
 function getUserFromToken(req) {
     const token = req.cookies.token;
     if (!token) return null;
@@ -49,7 +66,7 @@ function getUserFromToken(req) {
 // ===== API: РЕГИСТРАЦИЯ =====
 app.post('/api/register', async (req, res) => {
     try {
-        const { email, nickname, password } = req.body;
+        const { email, nickname, password, ref } = req.body;
 
         // Проверки
         if (!email || !nickname || !password) {
@@ -65,49 +82,49 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ error: 'Ник: только буквы, цифры и _' });
         }
 
-        const users = readUsers();
-
         // Проверка на занятость
-        if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
+        const emailCheck = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+        if (emailCheck.rows.length > 0) {
             return res.status(400).json({ error: 'Email уже занят' });
         }
-        if (users.find(u => u.nickname.toLowerCase() === nickname.toLowerCase())) {
+
+        const nickCheck = await pool.query('SELECT id FROM users WHERE LOWER(nickname) = LOWER($1)', [nickname]);
+        if (nickCheck.rows.length > 0) {
             return res.status(400).json({ error: 'Ник уже занят' });
         }
 
         // Хешируем пароль
         const passwordHash = await bcrypt.hash(password, 10);
 
-        // Создаём пользователя
-        const user = {
-            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
-            email,
-            nickname,
-            passwordHash,
-            createdAt: new Date().toISOString(),
-            balance: 0,
-            rank: 'Игрок',
-            referrals: 0
-        };
+        // Генерируем ID
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-        users.push(user);
-        writeUsers(users);
+        // Создаём пользователя
+        await pool.query(
+            'INSERT INTO users (id, email, nickname, password_hash, referred_by) VALUES ($1, $2, $3, $4, $5)',
+            [id, email, nickname, passwordHash, ref || null]
+        );
+
+        // Если есть реферер — увеличиваем счётчик
+        if (ref) {
+            await pool.query('UPDATE users SET referrals = referrals + 1 WHERE LOWER(nickname) = LOWER($1)', [ref]);
+        }
 
         // Создаём JWT
         const token = jwt.sign(
-            { id: user.id, email: user.email, nickname: user.nickname },
+            { id, email, nickname },
             JWT_SECRET,
             { expiresIn: '30d' }
         );
 
         res.cookie('token', token, {
             httpOnly: true,
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 дней
+            maxAge: 30 * 24 * 60 * 60 * 1000
         });
 
-        res.json({ success: true, nickname: user.nickname });
+        res.json({ success: true, nickname });
     } catch (e) {
-        console.error(e);
+        console.error('Register error:', e.message);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
@@ -120,14 +137,13 @@ app.post('/api/login', async (req, res) => {
             return res.status(400).json({ error: 'Заполни все поля' });
         }
 
-        const users = readUsers();
-        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-        if (!user) {
+        const result = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+        if (result.rows.length === 0) {
             return res.status(400).json({ error: 'Неверный email или пароль' });
         }
 
-        const isValid = await bcrypt.compare(password, user.passwordHash);
+        const user = result.rows[0];
+        const isValid = await bcrypt.compare(password, user.password_hash);
         if (!isValid) {
             return res.status(400).json({ error: 'Неверный email или пароль' });
         }
@@ -145,7 +161,7 @@ app.post('/api/login', async (req, res) => {
 
         res.json({ success: true, nickname: user.nickname });
     } catch (e) {
-        console.error(e);
+        console.error('Login error:', e.message);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
@@ -157,26 +173,35 @@ app.post('/api/logout', (req, res) => {
 });
 
 // ===== API: ИНФО О ПОЛЬЗОВАТЕЛЕ =====
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
     const payload = getUserFromToken(req);
     if (!payload) {
         return res.status(401).json({ error: 'Не авторизован' });
     }
 
-    const users = readUsers();
-    const user = users.find(u => u.id === payload.id);
-    if (!user) {
-        return res.status(401).json({ error: 'Пользователь не найден' });
-    }
+    try {
+        const result = await pool.query(
+            'SELECT nickname, email, balance, rank, referrals, created_at FROM users WHERE id = $1',
+            [payload.id]
+        );
 
-    res.json({
-        nickname: user.nickname,
-        email: user.email,
-        balance: user.balance,
-        rank: user.rank,
-        referrals: user.referrals,
-        createdAt: user.createdAt
-    });
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: 'Пользователь не найден' });
+        }
+
+        const user = result.rows[0];
+        res.json({
+            nickname: user.nickname,
+            email: user.email,
+            balance: user.balance,
+            rank: user.rank,
+            referrals: user.referrals,
+            createdAt: user.created_at
+        });
+    } catch (e) {
+        console.error('Me error:', e.message);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
 });
 
 // ===== СТРАНИЦЫ =====
@@ -206,6 +231,9 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`DUA LUPA website running on port ${PORT}`);
+// Запуск
+initDatabase().then(() => {
+    app.listen(PORT, () => {
+        console.log(`🚀 DUA LUPA website running on port ${PORT}`);
+    });
 });
