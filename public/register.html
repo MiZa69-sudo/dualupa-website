@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация — DUA LUPA</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <canvas id="particles"></canvas>
+
+    <header class="navbar">
+        <a href="/" class="logo">
+            <span class="logo-dot"></span>
+            DUA LUPA
+        </a>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/login">Войти</a>
+        </nav>
+    </header>
+
+    <main class="auth-page">
+        <div class="auth-glow"></div>
+
+        <div class="auth-card">
+            <h1 class="auth-title">СОЗДАТЬ АККАУНТ</h1>
+            <p class="auth-sub">Присоединяйся к DUA LUPA</p>
+
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Ник в игре</label>
+                    <input type="text" name="nickname" placeholder="Steve123" maxlength="16" required>
+                    <small>3-16 символов, только буквы, цифры и _</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" name="password" placeholder="Минимум 6 символов" minlength="6" required>
+                </div>
+
+                <button type="submit" class="btn primary btn-full" id="submit-btn">
+                    ЗАРЕГИСТРИРОВАТЬСЯ
+                </button>
+
+                <div id="message" class="message"></div>
+            </form>
+
+            <div class="auth-footer">
+                Уже есть аккаунт? <a href="/login">Войти</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="/particles.js"></script>
+    <script>
+        const form = document.getElementById('register-form');
+        const btn = document.getElementById('submit-btn');
+        const message = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.textContent = 'ОТПРАВКА...';
+            message.textContent = '';
+            message.className = 'message';
+
+            const formData = new FormData(form);
+            const data = {
+                email: formData.get('email'),
+                nickname: formData.get('nickname'),
+                password: formData.get('password')
+            };
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    message.textContent = '✅ Успешно! Перенаправляем...';
+                    message.className = 'message success';
+                    setTimeout(() => window.location.href = '/dashboard', 1000);
+                } else {
+                    message.textContent = '❌ ' + (result.error || 'Ошибка');
+                    message.className = 'message error';
+                    btn.disabled = false;
+                    btn.textContent = 'ЗАРЕГИСТРИРОВАТЬСЯ';
+                }
+            } catch (err) {
+                message.textContent = '❌ Ошибка соединения';
+                message.className = 'message error';
+                btn.disabled = false;
+                btn.textContent = 'ЗАРЕГИСТРИРОВАТЬСЯ';
+            }
+        });
+    </script>
+</body>
+</html>
