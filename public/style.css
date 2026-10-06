@@ -51,6 +51,7 @@ html, body {
     background: linear-gradient(90deg, #C099E7, #B57EEC, #9633F9);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    text-decoration: none;
 }
 
 .logo-dot {
@@ -59,7 +60,6 @@ html, body {
     border-radius: 50%;
     background: var(--purple-1);
     box-shadow: 0 0 15px var(--purple-1);
-    -webkit-text-fill-color: initial;
     animation: pulse 2s infinite;
 }
 
@@ -100,7 +100,7 @@ html, body {
     box-shadow: 0 0 35px rgba(150, 51, 249, 0.9);
 }
 
-/* ===== HERO ===== */
+/* ===== HERO (главная) ===== */
 .hero {
     position: relative;
     z-index: 10;
@@ -202,6 +202,9 @@ html, body {
     cursor: pointer;
     transition: 0.3s;
     font-family: inherit;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
 }
 
 .btn.primary {
@@ -224,6 +227,19 @@ html, body {
 .btn.secondary:hover {
     background: rgba(150, 51, 249, 0.15);
     box-shadow: 0 0 30px rgba(150, 51, 249, 0.5);
+}
+
+.btn-full {
+    width: 100%;
+    padding: 16px;
+    font-size: 14px;
+    letter-spacing: 3px;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
 /* ===== FEATURES ===== */
@@ -277,6 +293,7 @@ footer {
     border-top: 1px solid var(--border);
     margin-top: 60px;
 }
+
 /* ===== СТРАНИЦЫ АВТОРИЗАЦИИ ===== */
 .auth-page {
     position: relative;
@@ -392,20 +409,6 @@ footer {
     padding-left: 4px;
 }
 
-.btn-full {
-    width: 100%;
-    padding: 16px;
-    font-size: 14px;
-    letter-spacing: 3px;
-    margin-top: 10px;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
 .message {
     text-align: center;
     font-size: 13px;
@@ -446,4 +449,202 @@ footer {
 .auth-footer a:hover {
     color: #fff;
     text-shadow: 0 0 15px var(--purple-2);
+}
+
+/* ===== ЛИЧНЫЙ КАБИНЕТ ===== */
+.dashboard-page {
+    position: relative;
+    z-index: 10;
+    padding: 60px 20px;
+    min-height: calc(100vh - 70px);
+}
+
+.dashboard-glow {
+    position: absolute;
+    top: 30%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px; height: 800px;
+    background: radial-gradient(circle, rgba(150, 51, 249, 0.3) 0%, transparent 65%);
+    filter: blur(80px);
+    z-index: -1;
+    pointer-events: none;
+}
+
+.dashboard-container {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    position: relative;
+}
+
+/* Карточка профиля */
+.profile-card {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    padding: 30px;
+    background: rgba(18, 18, 26, 0.75);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    backdrop-filter: blur(25px);
+    box-shadow: 0 0 40px rgba(150, 51, 249, 0.15);
+    animation: card-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--purple-1), var(--purple-2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 900;
+    box-shadow: 0 0 30px rgba(150, 51, 249, 0.6);
+    flex-shrink: 0;
+}
+
+.profile-info h2 {
+    font-size: 26px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.profile-email {
+    color: #888;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.profile-rank {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(150, 51, 249, 0.15);
+    border: 1px solid rgba(150, 51, 249, 0.4);
+    color: var(--purple-2);
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* Статистика */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+}
+
+.stat-card {
+    padding: 22px 20px;
+    background: rgba(18, 18, 26, 0.7);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: 0.3s;
+    animation: card-in 0.6s 0.1s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--purple-1);
+    box-shadow: 0 0 30px rgba(150, 51, 249, 0.35);
+}
+
+.stat-label {
+    font-size: 10px;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+}
+
+.stat-value.accent {
+    color: #00ff64;
+    text-shadow: 0 0 15px rgba(0, 255, 100, 0.5);
+}
+
+/* Действия */
+.dashboard-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    animation: card-in 0.6s 0.2s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+/* Реферальный блок */
+.referral-block {
+    padding: 30px;
+    background: linear-gradient(135deg, rgba(150, 51, 249, 0.15), rgba(181, 126, 236, 0.05));
+    border: 1px solid rgba(150, 51, 249, 0.4);
+    border-radius: 20px;
+    backdrop-filter: blur(20px);
+    animation: card-in 0.6s 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+
+.referral-block h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: #fff;
+}
+
+.referral-block p {
+    color: #aaa;
+    font-size: 13px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.referral-input {
+    display: flex;
+    gap: 10px;
+}
+
+.referral-input input {
+    flex: 1;
+    padding: 14px 18px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--purple-2);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.referral-input input:focus {
+    outline: none;
+    border-color: var(--purple-1);
+}
+
+.referral-input .btn {
+    padding: 14px 25px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 768px) {
+    .navbar { padding: 15px 20px; }
+    .navbar nav { gap: 15px; }
+    .navbar nav a { font-size: 12px; }
+    .hero-title { font-size: 60px; letter-spacing: 8px; }
+    .server-status { flex-direction: column; gap: 10px; }
+    .buttons { flex-direction: column; }
+    .features { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .dashboard-actions { grid-template-columns: 1fr; }
+    .profile-card { flex-direction: column; text-align: center; }
+    .referral-input { flex-direction: column; }
 }
